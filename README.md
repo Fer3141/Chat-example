@@ -1,6 +1,6 @@
 ## `Chat Application`
 
-`This is a simple web-based chat application built for testing purposes. It utilizes the following technologies:`
+`This is a simple web-based chat application built for testing and study purposes. It utilizes the following technologies:`
 
 ## `Technologies Used`
 
