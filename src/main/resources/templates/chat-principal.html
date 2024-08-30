@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Aplicación de Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.2/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        @media (max-width: 767px) {
+            .flex-remove {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen bg-gray-900 text-white">
+    <div th:replace="fragments/header :: header" class="text-sm md:text-lg"></div>
+    <div class="flex-grow flex flex-col items-center justify-between p-2 md:p-4">
+        <div class="bg-gray-800 p-4 rounded shadow-md w-full md:max-w-4xl mt-20 mb-10 flex-grow flex flex-col">
+            <div class="flex-grow flex flex-col lg:flex-row mb-2 overflow-hidden flex-remove">
+                <div class="w-full lg:w-1/3 futuristic-border scrollable lg:mr-2 hidden lg:block">
+                    <h2 class="text-lg mb-2">Usuarios conectados (<span id="user-count">0</span>)</h2>
+                    <ul id="users" class="list-disc list-inside"></ul>
+                </div>
+                <div class="w-full flex flex-col futuristic-border scrollable lg:w-2/3">
+                    <div id="messages" class="flex-grow overflow-y-auto p-2 text-lg lg:text-xl" style="word-wrap: break-word;"></div>
+                </div>
+            </div>
+            <div class="flex mt-2">
+                <input type="hidden" id="from" th:value="${username}"/>
+                <input type="text" id="text" placeholder="Escribe algo..." class="w-full px-3 py-2 border rounded mr-2 futuristic-input text-lg lg:text-xl h-12" maxlength="200"/>
+                <button onclick="sendMessage()" class="futuristic-button text-lg lg:text-xl h-12">Enviar</button>
+            </div>
+        </div>
+    </div>
+    <div th:replace="fragments/footer :: footer" class="text-sm md:text-lg w-full"></div>
+    <script type="text/javascript">
+        var stompClient = null;
+
+        function connect() {
+            var socket = new SockJS('/chat');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function(frame) {
+                stompClient.subscribe('/topic/messages', function(messageOutput) {
+                    showMessage(JSON.parse(messageOutput.body));
+                });
+
+                stompClient.subscribe('/topic/users', function(userListOutput) {
+                    updateUsers(JSON.parse(userListOutput.body));
+                });
+
+                var from = document.getElementById('from').value;
+                if (from) {
+                    stompClient.send("/app/addUser", {}, JSON.stringify({'name': from}));
+                }
+            });
+        }
+
+        function sendMessage() {
+            var from = document.getElementById('from').value;
+            var text = document.getElementById('text').value;
+            if (from && text.length <= 200) {
+                stompClient.send("/app/sendMessage", {}, JSON.stringify({'from': from, 'text': text}));
+                document.getElementById('text').value = '';
+            } else {
+                alert("El mensaje no puede tener más de 200 caracteres.");
+            }
+        }
+
+        function showMessage(message) {
+            var messages = document.getElementById('messages');
+            var messageElement = document.createElement('div');
+            messageElement.appendChild(document.createTextNode(message.from + ": " + message.text));
+            messages.appendChild(messageElement);
+            messages.scrollTop = messages.scrollHeight; // Scroll to the bottom
+        }
+
+        function updateUsers(users) {
+            var usersList = document.getElementById('users');
+            var userCount = document.getElementById('user-count');
+            usersList.innerHTML = "";
+            users.forEach(function(user) {
+                var userElement = document.createElement('li');
+                userElement.appendChild(document.createTextNode(user.name));
+                usersList.appendChild(userElement);
+            });
+            userCount.textContent = users.length;
+        }
+
+        connect();
+    </script>
+</body>
+</html>
